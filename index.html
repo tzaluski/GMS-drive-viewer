@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Google Drive Folder Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; padding: 2em; }
+    ul { list-style: none; padding: 0; }
+    li { margin-bottom: 0.5em; }
+    a { color: #0066cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    #path { margin-bottom: 1em; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <h1>Google Drive – GMS</h1>
+  <div id="path"></div>
+  <ul id="file-list"></ul>
+
+  <script>
+    const API_KEY = 'AIzaSyAABnh0bQPsKNU_Pve-9hywn2-0N8XxgY8';
+    const MAIN_FOLDER_ID = '1YrFy8BsWC31-oUNaK9yF5YfO5PbuTT8B';
+
+    let folderStack = [ { id: MAIN_FOLDER_ID, name: 'GMS Baza utworów' } ];
+
+    function loadFolder(folderId) {
+      const query = `'${folderId}' in parents and trashed = false`;
+      const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&key=${API_KEY}&fields=files(id,name,mimeType)`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          displayBreadcrumb();
+          const list = document.getElementById('file-list');
+          list.innerHTML = '';
+          data.files.forEach(file => {
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.textContent = file.name;
+
+            if (file.mimeType === 'application/vnd.google-apps.folder') {
+              link.href = '#';
+              link.onclick = () => {
+                folderStack.push({ id: file.id, name: file.name });
+                loadFolder(file.id);
+                return false;
+              };
+            } else {
+              link.href = `https://drive.google.com/file/d/${file.id}/view`;
+              link.target = '_blank';
+            }
+
+            li.appendChild(link);
+            list.appendChild(li);
+          });
+        });
+    }
+
+    function displayBreadcrumb() {
+      const path = document.getElementById('path');
+      path.innerHTML = '';
+      folderStack.forEach((f, i) => {
+        const span = document.createElement('span');
+        span.innerHTML = (i > 0 ? ' / ' : '') + `<a href="#">${f.name}</a>`;
+        span.querySelector('a').onclick = () => {
+          folderStack = folderStack.slice(0, i + 1);
+          loadFolder(f.id);
+          return false;
+        };
+        path.appendChild(span);
+      });
+    }
+
+    loadFolder(MAIN_FOLDER_ID);
+  </script>
+</body>
+</html>
